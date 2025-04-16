@@ -1,8 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { Menu, X, Check, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { X, Check, Loader2 } from "lucide-react"
 
 export default function CameraView() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -14,21 +13,19 @@ export default function CameraView() {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [status, setStatus] = useState<"idle" | "recording" | "processing" | "success" | "error">("idle")
   const [statusMessage, setStatusMessage] = useState("")
-  const [zoomLevel, setZoomLevel] = useState("1X")
-
   const [permissionsChecked, setPermissionsChecked] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
 
-  // Sync recordedChunks to recordedChunksRef
+  const [shouldStop, setShouldStop] = useState(false)
+
   useEffect(() => {
     recordedChunksRef.current = recordedChunks
   }, [recordedChunks])
 
-  // Ask for permissions and then start camera
   useEffect(() => {
     const requestPermissionsAndStartCamera = async () => {
       try {
-        const [stream, position] = await Promise.all([
+        const [stream] = await Promise.all([
           navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "environment",
@@ -71,7 +68,6 @@ export default function CameraView() {
     }
   }, [])
 
-  // Countdown effect
   useEffect(() => {
     if (countdown === null) return
 
@@ -85,35 +81,34 @@ export default function CameraView() {
 
   const startRecording = () => {
     if (!videoRef.current || !videoRef.current.srcObject) return
-  
+
     setStatus("recording")
     setStatusMessage("Recording video...")
     recordedChunksRef.current = []
     setRecordedChunks([])
-  
+
     const stream = videoRef.current.srcObject as MediaStream
     const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" })
-  
+
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunksRef.current.push(event.data)
       }
     }
-  
+
     mediaRecorderRef.current = mediaRecorder
     mediaRecorder.start()
     setIsRecording(true)
-    setCountdown(10)
+    setCountdown(5)
   }
-  
 
   const stopRecording = async (): Promise<void> => {
     if (!isRecording || !mediaRecorderRef.current || mediaRecorderRef.current.state === "inactive") return
-  
+
     return new Promise<void>((resolve) => {
       const recorder = mediaRecorderRef.current
-      if (!recorder) return resolve() // extra safety
-  
+      if (!recorder) return resolve()
+
       recorder.onstop = async () => {
         const chunks = recordedChunksRef.current
         if (chunks.length > 0) {
@@ -122,25 +117,41 @@ export default function CameraView() {
           setStatus("error")
           setStatusMessage("No video data was recorded.")
         }
+
+        if (!shouldStop) {
+          startRecording()
+        }
+
         resolve()
       }
-  
+
       recorder.stop()
       setIsRecording(false)
       setCountdown(null)
     })
   }
-  
+
+  const handleRecordButton = () => {
+    if (isRecording) {
+      // Manually stopping the loop
+      setShouldStop(true)
+      stopRecording()
+    } else {
+      // Start infinite recording loop
+      setShouldStop(false)
+      startRecording()
+    }
+  }
 
   const processVideo = async (chunks: Blob[]) => {
     setStatus("processing")
     setStatusMessage("Processing video...")
-  
+
     try {
       const position = await getCurrentPosition()
       const videoBlob = new Blob(chunks, { type: "video/webm" })
       const videoFile = new File([videoBlob], "recording.webm", { type: "video/webm" })
-  
+
       const formData = new FormData()
       formData.append("video", videoFile)
       formData.append(
@@ -150,27 +161,26 @@ export default function CameraView() {
           longitude: position.coords.longitude,
         }),
       )
-  
+
       const response = await fetch("/api/unprocessed/upload", {
         method: "POST",
         body: formData,
       })
-  
+
       if (!response.ok) throw new Error("Failed to upload video")
-  
+
       setStatus("success")
       setStatusMessage("Video uploaded successfully!")
       setTimeout(() => {
         setStatus("idle")
         setStatusMessage("")
-      }, 3000)
+      }, 2000)
     } catch (error: any) {
       console.error("Error processing video:", error)
       setStatus("error")
       setStatusMessage("Error uploading video. Please try again.")
     }
   }
-  
 
   const getCurrentPosition = (): Promise<GeolocationPosition> => {
     return new Promise((resolve, reject) => {
@@ -202,21 +212,6 @@ export default function CameraView() {
 
       <div className="relative flex-1 bg-black overflow-hidden">
         <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-          {["0.6", "1X", "2"].map((zoom) => (
-            <button
-              key={zoom}
-              className={`rounded-full py-1 px-3 text-sm ${
-                zoomLevel === zoom ? "bg-white text-black" : "bg-gray-700 text-white"
-              }`}
-              onClick={() => setZoomLevel(zoom)}
-            >
-              {zoom}
-            </button>
-          ))}
-        </div>
-
         {countdown !== null && (
           <div className="absolute top-4 right-4 bg-red-500 text-white rounded-full h-8 w-8 flex items-center justify-center">
             {countdown}
@@ -224,19 +219,9 @@ export default function CameraView() {
         )}
       </div>
 
-      <div className="bg-black p-6 flex flex-col items-center">
-        <button
-          className={`h-16 w-16 rounded-full border-4 ${
-            isRecording ? "border-red-500 bg-red-500" : "border-white bg-white"
-          } flex items-center justify-center mb-4`}
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={status === "processing" || !permissionsChecked}
-        >
-          {isRecording && <div className="h-8 w-8 bg-red-500 rounded-sm" />}
-        </button>
-
+      <div className="bg-black p-6 flex flex-col items-center space-y-4">
         <div className="h-8 flex items-center justify-center">
-          {status === "idle" && !isRecording && <p className="text-white text-sm">Tap to record a 10s clip</p>}
+          {status === "idle" && !isRecording && <p className="text-white text-sm">Tap to record a 5s clip</p>}
           {status === "recording" && <p className="text-red-500 text-sm">Recording... {countdown}s</p>}
           {status === "processing" && (
             <div className="flex items-center gap-2">
@@ -257,6 +242,16 @@ export default function CameraView() {
             </div>
           )}
         </div>
+
+        <button
+          className={`h-16 w-16 rounded-full border-4 ${
+            isRecording ? "border-red-500 bg-red-500" : "border-white bg-white"
+          } flex items-center justify-center`}
+          onClick={handleRecordButton}
+          disabled={status === "processing" || !permissionsChecked}
+        >
+          {isRecording && <div className="h-8 w-8 bg-red-500 rounded-sm" />}
+        </button>
       </div>
     </div>
   )

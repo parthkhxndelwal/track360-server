@@ -1,3 +1,4 @@
+// api/processed/upload
 import { type NextRequest, NextResponse } from "next/server"
 import { v2 as cloudinary } from "cloudinary"
 import { MongoClient, ObjectId } from "mongodb"
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const videoFile = formData.get("video") as File
     const unprocessedId = formData.get("id") as string
+    const dataString = formData.get("data") as string | null // New: optional data param
 
     if (!videoFile || !unprocessedId) {
       return NextResponse.json({ error: "Video file and unprocessed ID are required" }, { status: 400 })
@@ -78,13 +80,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unprocessed record not found" }, { status: 404 })
     }
 
-    // Insert processed record
+    // Optional: parse 'data' as JSON
+    let extraData = null
+    if (dataString) {
+      try {
+        extraData = JSON.parse(dataString)
+      } catch (error) {
+        console.error("Invalid JSON in 'data' field:", dataString)
+        return NextResponse.json({ error: "Invalid JSON in 'data' field" }, { status: 400 })
+      }
+    }
+
+    // Insert processed record with optional data
     const processedResult = await processedCollection.insertOne({
       unprocessedId: new ObjectId(unprocessedId),
       originalVideoUrl: unprocessedRecord.videoUrl,
       processedVideoUrl,
       location: unprocessedRecord.location,
       createdAt: new Date(),
+      ...(extraData && { extraData }), // only include if present
     })
 
     // Update unprocessed record
@@ -103,3 +117,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to process upload" }, { status: 500 })
   }
 }
+

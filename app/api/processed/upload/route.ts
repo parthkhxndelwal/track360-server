@@ -52,11 +52,58 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
   })
 }
 
+// Sample payloads that this route accepts:
+
+/*
+1. Application/JSON payload:
+{
+  "videoUrl": "https://res.cloudinary.com/example/video/upload/v1234567890/processed-videos/sample.mp4",
+  "id": "507f1f77bcf86cd799439011", // MongoDB ObjectId as string
+  "data": "{\"metadata\": {\"duration\": 30, \"resolution\": \"1080p\"}}" // Optional
+}
+
+2. Multipart Form Data:
+-----------------------------12345
+Content-Disposition: form-data; name="videoURL"
+https://res.cloudinary.com/example/video/upload/v1234567890/processed-videos/sample.mp4
+
+Content-Disposition: form-data; name="id"
+507f1f77bcf86cd799439011
+
+Content-Disposition: form-data; name="data"
+{"metadata": {"duration": 30, "resolution": "1080p"}}
+-----------------------------12345
+
+3. URL Encoded Form:
+videoURL=https://res.cloudinary.com/example/video/upload/v1234567890/processed-videos/sample.mp4&id=507f1f77bcf86cd799439011&data={"metadata":{"duration":30,"resolution":"1080p"}}
+*/
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { videoUrl, id: unprocessedId, data: dataString } = body
+    let videoUrl, unprocessedId, dataString;
+    
+    // Check content type to determine how to parse the request
+    const contentType = request.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // Handle JSON body
+      const body = await request.json();
+      videoUrl = body.videoUrl;
+      unprocessedId = body.id;
+      dataString = body.data;
+    } else if (contentType.includes('multipart/form-data')) {
+      // Handle form data
+      const formData = await request.formData();
+      videoUrl = formData.get('videoURL') as string || formData.get('videoUrl') as string;
+      unprocessedId = formData.get('id') as string;
+      dataString = formData.get('data') as string;
+    } else {
+      // Handle URL encoded form
+      const formData = await request.formData();
+      videoUrl = formData.get('videoURL') as string || formData.get('videoUrl') as string;
+      unprocessedId = formData.get('id') as string;
+      dataString = formData.get('data') as string;
+    }
 
     if (!videoUrl || !unprocessedId) {
       return NextResponse.json({ error: "Video URL and unprocessed ID are required" }, { status: 400 })
@@ -78,7 +125,7 @@ export async function POST(request: NextRequest) {
     let extraData = null
     if (dataString) {
       try {
-        extraData = JSON.parse(dataString)
+        extraData = typeof dataString === 'string' ? JSON.parse(dataString) : dataString;
       } catch {
         return NextResponse.json({ error: "Invalid JSON in 'data'" }, { status: 400 })
       }

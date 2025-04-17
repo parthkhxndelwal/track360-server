@@ -11,7 +11,7 @@ export default function CameraView() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
   const [countdown, setCountdown] = useState<number | null>(null)
-  const [status, setStatus] = useState<"idle" | "recording" | "processing" | "success" | "error">("idle")
+  const [status, setStatus] = useState<"idle" | "recording" | "processing" | "uploading" | "success" | "error">("idle")
   const [statusMessage, setStatusMessage] = useState("")
   const [permissionsChecked, setPermissionsChecked] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -153,22 +153,52 @@ export default function CameraView() {
       const videoBlob = new Blob(chunks, { type: "video/webm" })
       const videoFile = new File([videoBlob], "recording.webm", { type: "video/webm" })
 
-      const formData = new FormData()
-      formData.append("video", videoFile)
-      formData.append(
-        "location",
-        JSON.stringify({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        }),
+      // Step 1: Get signed upload credentials
+      setStatusMessage("Getting upload signature...")
+      const signResponse = await fetch("/api/unprocessed/sign-upload")
+      if (!signResponse.ok) throw new Error("Failed to get upload signature")
+      
+      const signData = await signResponse.json()
+      
+      // Step 2: Upload directly to Cloudinary
+      setStatus("uploading")
+      setStatusMessage("Uploading to cloud...")
+      
+      const cloudinaryFormData = new FormData()
+      cloudinaryFormData.append("file", videoFile)
+      cloudinaryFormData.append("api_key", signData.apiKey)
+      cloudinaryFormData.append("timestamp", signData.timestamp.toString())
+      cloudinaryFormData.append("signature", signData.signature)
+      cloudinaryFormData.append("folder", "unprocessed-videos")
+      
+      const cloudinaryResponse = await fetch(
+        `https://api.cloudinary.com/v1_1/${signData.cloudName}/video/upload`,
+        {
+          method: "POST",
+          body: cloudinaryFormData,
+        }
       )
-
-      const response = await fetch("/api/unprocessed/upload", {
+      
+      if (!cloudinaryResponse.ok) throw new Error("Failed to upload to cloud")
+      const cloudinaryResult = await cloudinaryResponse.json()
+      
+      // Step 3: Send the video URL to our API
+      setStatusMessage("Saving recording...")
+      const apiResponse = await fetch("/api/unprocessed/upload", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoUrl: cloudinaryResult.secure_url,
+          location: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }
+        }),
       })
 
-      if (!response.ok) throw new Error("Failed to upload video")
+      if (!apiResponse.ok) throw new Error("Failed to save recording")
 
       setStatus("success")
       setStatusMessage("Video uploaded successfully!")
@@ -179,7 +209,7 @@ export default function CameraView() {
     } catch (error: any) {
       console.error("Error processing video:", error)
       setStatus("error")
-      setStatusMessage("Error uploading video. Please try again.")
+      setStatusMessage(error.message || "Error uploading video. Please try again.")
     }
   }
 
@@ -232,6 +262,12 @@ export default function CameraView() {
               <p className="text-white text-sm">{statusMessage}</p>
             </div>
           )}
+          {status === "uploading" && (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <p className="text-white text-sm">{statusMessage}</p>
+            </div>
+          )}
           {status === "success" && (
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-500" />
@@ -251,7 +287,7 @@ export default function CameraView() {
             isRecording ? "border-red-500 bg-red-500" : "border-white bg-white"
           } flex items-center justify-center`}
           onClick={handleRecordButton}
-          disabled={status === "processing" || !permissionsChecked}
+          disabled={status === "processing" || status === "uploading" || !permissionsChecked}
         >
           {isRecording && <div className="h-8 w-8 bg-red-500 rounded-sm" />}
         </button>

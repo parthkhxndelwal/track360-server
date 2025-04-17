@@ -52,6 +52,11 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
   })
 }
 
+// Validate if a string is a valid MongoDB ObjectId
+function isValidObjectId(id: string): boolean {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
 // Sample payloads that this route accepts:
 
 /*
@@ -107,6 +112,11 @@ export async function POST(request: NextRequest) {
 
     if (!videoUrl || !unprocessedId) {
       return NextResponse.json({ error: "Video URL and unprocessed ID are required" }, { status: 400 })
+    }
+    
+    // Validate that the ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(unprocessedId)) {
+      return NextResponse.json({ error: "Invalid ID format. Must be a 24 character hex string." }, { status: 400 });
     }
 
     const client = await connectToDatabase()

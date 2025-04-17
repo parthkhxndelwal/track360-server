@@ -4,16 +4,14 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { useEffect } from "react"
+import { AuthProvider } from "@/lib/auth-context";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] })
 
 // export const metadata: Metadata = {
-//   title: "Track360 Demo",
-//   description: "Record and process video clips with location data",
-//   manifest: "/manifest.json",
-//   themeColor: "#000000",
-//   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
-//   generator: 'v0.dev'
+//   title: "Track360 - Urban Issues Monitoring Platform",
+//   description: "Real-time monitoring of urban issues across India",
 // }
 
 export default function RootLayout({
@@ -40,11 +38,16 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
-      <body className={inter.className} suppressHydrationWarning={true}>{children}</body>
+      <body className={`${inter.className} dark:bg-gray-950 dark:text-gray-50`} suppressHydrationWarning={true}>
+        <AuthProvider>
+          {children}
+          <Toaster position="top-right" theme="dark" />
+        </AuthProvider>
+      </body>
     </html>
   )
 }

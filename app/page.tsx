@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import CameraView from "@/components/camera-view"
 
 export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null)
   const [showInstallOverlay, setShowInstallOverlay] = useState(false)
 
+  // Handle PWA install prompt
   useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault()

@@ -55,28 +55,18 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const videoFile = formData.get("video") as File
-    const unprocessedId = formData.get("id") as string
-    const dataString = formData.get("data") as string | null // New: optional data param
+    const body = await request.json()
+    const { videoUrl, id: unprocessedId, data: dataString } = body
 
-    if (!videoFile || !unprocessedId) {
-      return NextResponse.json({ error: "Video file and unprocessed ID are required" }, { status: 400 })
+    if (!videoUrl || !unprocessedId) {
+      return NextResponse.json({ error: "Video URL and unprocessed ID are required" }, { status: 400 })
     }
 
-    // Convert file to buffer
-    const buffer = Buffer.from(await videoFile.arrayBuffer())
-
-    // Upload to Cloudinary
-    const processedVideoUrl = await uploadToCloudinary(buffer)
-
-    // Store in MongoDB and update unprocessed record
     const client = await connectToDatabase()
     const db = client.db(DB_NAME)
     const unprocessedCollection = db.collection(COLLECTION_NAME)
     const processedCollection = db.collection(PROCESSED_COLLECTION)
 
-    // Find the unprocessed record
     const unprocessedRecord = await unprocessedCollection.findOne({
       _id: new ObjectId(unprocessedId),
     })
@@ -85,41 +75,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unprocessed record not found" }, { status: 404 })
     }
 
-    // Optional: parse 'data' as JSON
     let extraData = null
     if (dataString) {
       try {
         extraData = JSON.parse(dataString)
-      } catch (error) {
-        console.error("Invalid JSON in 'data' field:", dataString)
-        return NextResponse.json({ error: "Invalid JSON in 'data' field" }, { status: 400 })
+      } catch {
+        return NextResponse.json({ error: "Invalid JSON in 'data'" }, { status: 400 })
       }
     }
 
-    // Insert processed record with optional data
     const processedResult = await processedCollection.insertOne({
       unprocessedId: new ObjectId(unprocessedId),
       originalVideoUrl: unprocessedRecord.videoUrl,
-      processedVideoUrl,
+      processedVideoUrl: videoUrl,
       location: unprocessedRecord.location,
       createdAt: new Date(),
-      ...(extraData && { extraData }), // only include if present
+      ...(extraData && { extraData }),
     })
 
-    // Update unprocessed record
     await unprocessedCollection.updateOne(
       { _id: new ObjectId(unprocessedId) },
-      { $set: { processed: true, processedId: processedResult.insertedId } },
+      { $set: { processed: true, processedId: processedResult.insertedId } }
     )
 
     return NextResponse.json({
       success: true,
       id: processedResult.insertedId.toString(),
-      processedVideoUrl,
+      processedVideoUrl: videoUrl,
     })
   } catch (error) {
     console.error("Error processing upload:", error)
     return NextResponse.json({ error: "Failed to process upload" }, { status: 500 })
   }
 }
-

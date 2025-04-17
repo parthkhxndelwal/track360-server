@@ -15,7 +15,6 @@ export default function CameraView() {
   const [statusMessage, setStatusMessage] = useState("")
   const [permissionsChecked, setPermissionsChecked] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
-  const [shouldStop, setShouldStop] = useState(false)
 
   useEffect(() => {
     recordedChunksRef.current = recordedChunks
@@ -120,11 +119,6 @@ export default function CameraView() {
           setStatus("error")
           setStatusMessage("No video data was recorded.")
         }
-
-        if (!shouldStop) {
-          startRecording()
-        }
-
         resolve()
       }
 
@@ -136,10 +130,8 @@ export default function CameraView() {
 
   const handleRecordButton = () => {
     if (isRecording) {
-      setShouldStop(true)
       stopRecording()
     } else {
-      setShouldStop(false)
       startRecording()
     }
   }
@@ -159,53 +151,89 @@ export default function CameraView() {
       if (!signResponse.ok) throw new Error("Failed to get upload signature")
       
       const signData = await signResponse.json()
+      console.log("Sign data received:", signData)
       
       // Step 2: Upload directly to Cloudinary
       setStatus("uploading")
       setStatusMessage("Uploading to cloud...")
       
+      // Parameters must be in exactly the same order as they were signed
       const cloudinaryFormData = new FormData()
+      
+      // Add the file first (not part of signature)
       cloudinaryFormData.append("file", videoFile)
-      cloudinaryFormData.append("api_key", signData.apiKey)
+      
+      // Add signed parameters in exact order they were signed
+      cloudinaryFormData.append("folder", signData.folder)
       cloudinaryFormData.append("timestamp", signData.timestamp.toString())
+      
+      // Add the API key and signature (not part of the string that was signed)
+      cloudinaryFormData.append("api_key", signData.apiKey)
       cloudinaryFormData.append("signature", signData.signature)
-      cloudinaryFormData.append("folder", "unprocessed-videos")
       
-      const cloudinaryResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signData.cloudName}/video/upload`,
-        {
-          method: "POST",
-          body: cloudinaryFormData,
-        }
-      )
+      // Log form data entries (for debugging)
+      const formDataEntries: Record<string, any> = {};
+      cloudinaryFormData.forEach((value, key) => {
+        formDataEntries[key] = value instanceof File ? value.name : value;
+      });
+      console.log("Form data entries:", formDataEntries);
       
-      if (!cloudinaryResponse.ok) throw new Error("Failed to upload to cloud")
-      const cloudinaryResult = await cloudinaryResponse.json()
-      
-      // Step 3: Send the video URL to our API
-      setStatusMessage("Saving recording...")
-      const apiResponse = await fetch("/api/unprocessed/upload", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoUrl: cloudinaryResult.secure_url,
-          location: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+      // Set resource_type in the URL, not as a form parameter
+      try {
+        const cloudinaryResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${signData.cloudName}/video/upload`,
+          {
+            method: "POST",
+            body: cloudinaryFormData,
           }
-        }),
-      })
+        )
+        
+        // Get response body even if it's an error
+        const cloudinaryText = await cloudinaryResponse.text()
+        let cloudinaryResult
+        
+        try {
+          cloudinaryResult = JSON.parse(cloudinaryText)
+        } catch (e) {
+          throw new Error(`Invalid response from Cloudinary: ${cloudinaryText}`)
+        }
+        
+        if (!cloudinaryResponse.ok) {
+          throw new Error(`Cloudinary error: ${cloudinaryResult.error?.message || cloudinaryText}`)
+        }
+        
+        if (!cloudinaryResult.secure_url) {
+          throw new Error("No secure URL in Cloudinary response")
+        }
+        
+        // Step 3: Send the video URL to our API
+        setStatusMessage("Saving recording...")
+        const apiResponse = await fetch("/api/unprocessed/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            videoUrl: cloudinaryResult.secure_url,
+            location: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }
+          }),
+        })
 
-      if (!apiResponse.ok) throw new Error("Failed to save recording")
+        if (!apiResponse.ok) throw new Error("Failed to save recording")
 
-      setStatus("success")
-      setStatusMessage("Video uploaded successfully!")
-      setTimeout(() => {
-        setStatus("idle")
-        setStatusMessage("")
-      }, 2000)
+        setStatus("success")
+        setStatusMessage("Video uploaded successfully!")
+        setTimeout(() => {
+          setStatus("idle")
+          setStatusMessage("")
+        }, 2000)
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload error:", cloudinaryError)
+        throw cloudinaryError
+      }
     } catch (error: any) {
       console.error("Error processing video:", error)
       setStatus("error")

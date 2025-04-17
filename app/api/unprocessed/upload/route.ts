@@ -51,56 +51,81 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const locationString = formData.get("location") as string
-    const videoURL = formData.get("videoURL") as string
-
-    if (!locationString) {
-      return NextResponse.json({ error: "Location data is required" }, { status: 400 })
-    }
-
-    // Parse location data
-    const location = JSON.parse(locationString)
-    
     let videoUrl: string;
+    let location: any;
     
-    // Check if videoURL is provided in the request
-    if (videoURL) {
-      // Use the provided videoURL directly
-      videoUrl = videoURL;
+    // Check content type to determine how to parse the request
+    const contentType = request.headers.get("content-type") || "";
+    
+    if (contentType.includes("application/json")) {
+      // Handle JSON payload
+      const body = await request.json();
+      videoUrl = body.videoUrl || body.videoURL;
+      location = body.location;
     } else {
-      // If no videoURL, check for video file
-      const videoFile = formData.get("video") as File
-      if (!videoFile) {
-        return NextResponse.json({ error: "Either video file or videoURL is required" }, { status: 400 })
+      // Handle form data
+      const formData = await request.formData();
+      const videoURL = formData.get("videoURL") as string;
+      const locationString = formData.get("location") as string;
+      
+      if (!locationString) {
+        return NextResponse.json({ error: "Location data is required" }, { status: 400 });
       }
       
-      // Convert file to buffer
-      const buffer = Buffer.from(await videoFile.arrayBuffer())
+      // Parse location data from string
+      try {
+        location = JSON.parse(locationString);
+      } catch (e) {
+        return NextResponse.json({ error: "Invalid location data format" }, { status: 400 });
+      }
       
-      // Upload to Cloudinary
-      videoUrl = await uploadToCloudinary(buffer)
+      // Check if videoURL is provided in the request
+      if (videoURL) {
+        // Use the provided videoURL directly
+        videoUrl = videoURL;
+      } else {
+        // If no videoURL, check for video file
+        const videoFile = formData.get("video") as File;
+        if (!videoFile) {
+          return NextResponse.json({ error: "Either video file or videoURL is required" }, { status: 400 });
+        }
+        
+        // Convert file to buffer
+        const buffer = Buffer.from(await videoFile.arrayBuffer());
+        
+        // Upload to Cloudinary
+        videoUrl = await uploadToCloudinary(buffer);
+      }
+    }
+    
+    // Validate required data
+    if (!videoUrl) {
+      return NextResponse.json({ error: "Video URL is required" }, { status: 400 });
+    }
+    
+    if (!location) {
+      return NextResponse.json({ error: "Location data is required" }, { status: 400 });
     }
 
     // Store in MongoDB
-    const client = await connectToDatabase()
-    const db = client.db(DB_NAME)
-    const collection = db.collection(COLLECTION_NAME)
+    const client = await connectToDatabase();
+    const db = client.db(DB_NAME);
+    const collection = db.collection(COLLECTION_NAME);
 
     const result = await collection.insertOne({
       videoUrl,
       location,
       createdAt: new Date(),
       processed: false,
-    })
+    });
 
     return NextResponse.json({
       success: true,
       id: result.insertedId.toString(),
       videoUrl,
-    })
+    });
   } catch (error) {
-    console.error("Error processing upload:", error)
-    return NextResponse.json({ error: "Failed to process upload" }, { status: 500 })
+    console.error("Error processing upload:", error);
+    return NextResponse.json({ error: "Failed to process upload" }, { status: 500 });
   }
 }

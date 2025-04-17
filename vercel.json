@@ -1,0 +1,9 @@
+{
+    "functions": {
+      "api/processed/upload.ts": {
+        "maxDuration": 60,
+        "maxSize": "50mb"
+      }
+    }
+  }
+  

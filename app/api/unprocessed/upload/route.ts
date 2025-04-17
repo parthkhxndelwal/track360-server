@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       // Use the provided videoURL directly
       videoUrl = videoURL;
     } else {
-      // Process video file upload if no videoURL is provided
+      // If no videoURL, check for video file
       const videoFile = formData.get("video") as File
       if (!videoFile) {
         return NextResponse.json({ error: "Either video file or videoURL is required" }, { status: 400 })

@@ -41,7 +41,6 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
       }
     )
     
-
     const readable = new Readable()
     readable._read = () => {} // _read is required but you can noop it
     readable.push(buffer)
@@ -53,21 +52,35 @@ async function uploadToCloudinary(buffer: Buffer): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const videoFile = formData.get("video") as File
     const locationString = formData.get("location") as string
+    const videoURL = formData.get("videoURL") as string
 
-    if (!videoFile || !locationString) {
-      return NextResponse.json({ error: "Video file and location are required" }, { status: 400 })
+    if (!locationString) {
+      return NextResponse.json({ error: "Location data is required" }, { status: 400 })
     }
 
     // Parse location data
     const location = JSON.parse(locationString)
-
-    // Convert file to buffer
-    const buffer = Buffer.from(await videoFile.arrayBuffer())
-
-    // Upload to Cloudinary
-    const videoUrl = await uploadToCloudinary(buffer)
+    
+    let videoUrl: string;
+    
+    // Check if videoURL is provided in the request
+    if (videoURL) {
+      // Use the provided videoURL directly
+      videoUrl = videoURL;
+    } else {
+      // Process video file upload if no videoURL is provided
+      const videoFile = formData.get("video") as File
+      if (!videoFile) {
+        return NextResponse.json({ error: "Either video file or videoURL is required" }, { status: 400 })
+      }
+      
+      // Convert file to buffer
+      const buffer = Buffer.from(await videoFile.arrayBuffer())
+      
+      // Upload to Cloudinary
+      videoUrl = await uploadToCloudinary(buffer)
+    }
 
     // Store in MongoDB
     const client = await connectToDatabase()

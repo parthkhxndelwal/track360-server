@@ -32,11 +32,15 @@ async function connectToDatabase() {
 // Helper function to upload to Cloudinary
 async function uploadToCloudinary(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream({ resource_type: "video" }, (error, result) => {
-      if (error) return reject(error)
-      if (!result) return reject(new Error("No result from Cloudinary"))
-      resolve(result.secure_url)
-    })
+    const uploadStream = (cloudinary.uploader as any).upload_stream(
+      { resource_type: "video" },
+      (error: any, result: any) => {
+        if (error) return reject(error)
+        if (!result) return reject(new Error("No result from Cloudinary"))
+        resolve(result.secure_url)
+      }
+    )
+    
 
     const readable = new Readable()
     readable._read = () => {} // _read is required but you can noop it

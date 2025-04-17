@@ -15,7 +15,6 @@ export default function CameraView() {
   const [statusMessage, setStatusMessage] = useState("")
   const [permissionsChecked, setPermissionsChecked] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
-
   const [shouldStop, setShouldStop] = useState(false)
 
   useEffect(() => {
@@ -25,7 +24,7 @@ export default function CameraView() {
   useEffect(() => {
     const requestPermissionsAndStartCamera = async () => {
       try {
-        const [stream] = await Promise.all([
+        const [stream, _position] = await Promise.all([
           navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "environment",
@@ -88,7 +87,11 @@ export default function CameraView() {
     setRecordedChunks([])
 
     const stream = videoRef.current.srcObject as MediaStream
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" })
+    const options = MediaRecorder.isTypeSupported("video/webm")
+      ? { mimeType: "video/webm" }
+      : undefined
+
+    const mediaRecorder = new MediaRecorder(stream, options)
 
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
@@ -133,11 +136,9 @@ export default function CameraView() {
 
   const handleRecordButton = () => {
     if (isRecording) {
-      // Manually stopping the loop
       setShouldStop(true)
       stopRecording()
     } else {
-      // Start infinite recording loop
       setShouldStop(false)
       startRecording()
     }
@@ -207,11 +208,13 @@ export default function CameraView() {
       )}
 
       <div className="flex justify-between items-center p-4 bg-black">
-        <h1 className="text-xl font-bold">Track360 Demo</h1>
+        <h1 className="text-xl font-bold text-white">Track360 Demo</h1>
       </div>
 
       <div className="relative flex-1 bg-black overflow-hidden">
-        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover">
+          Your browser does not support the video tag.
+        </video>
         {countdown !== null && (
           <div className="absolute top-4 right-4 bg-red-500 text-white rounded-full h-8 w-8 flex items-center justify-center">
             {countdown}

@@ -367,11 +367,74 @@ export default function VideoDetailPage() {
                             setVideosReady(true);
                           }
                         }}
-                        poster="/images/thumbnails/default.jpg"
+                        poster={videoDetail.thumbnail}
                         controls={true}
                         controlsList="nodownload"
                         preload="auto"
                         crossOrigin="anonymous"
+                        onPosterError={(e) => {
+                          // Create a dynamic poster using code
+                          const canvas = document.createElement('canvas');
+                          const ctx = canvas.getContext('2d');
+                          
+                          if (ctx) {
+                            // Set canvas dimensions
+                            canvas.width = 640;
+                            canvas.height = 360;
+                            
+                            // Create random but consistent color based on title
+                            const getColor = (text: string) => {
+                              const colors = [
+                                '#3498db', '#2ecc71', '#e74c3c', '#f39c12', 
+                                '#9b59b6', '#1abc9c', '#d35400', '#c0392b'
+                              ];
+                              
+                              // Simple hash for consistent color
+                              let hash = 0;
+                              for (let i = 0; i < text.length; i++) {
+                                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+                              }
+                              
+                              return colors[Math.abs(hash) % colors.length];
+                            };
+                            
+                            const bgColor = getColor(videoDetail.title);
+                            
+                            // Fill background
+                            ctx.fillStyle = bgColor + '33'; // Adding transparency
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Draw play icon
+                            ctx.strokeStyle = bgColor;
+                            ctx.lineWidth = 5;
+                            ctx.beginPath();
+                            ctx.moveTo(canvas.width / 2 - 30, canvas.height / 2 - 40);
+                            ctx.lineTo(canvas.width / 2 - 30, canvas.height / 2 + 40);
+                            ctx.lineTo(canvas.width / 2 + 40, canvas.height / 2);
+                            ctx.closePath();
+                            ctx.stroke();
+                            ctx.fillStyle = bgColor;
+                            ctx.fill();
+                            
+                            // Draw title
+                            ctx.font = 'bold 24px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillStyle = bgColor;
+                            
+                            // Truncate title if needed
+                            let title = videoDetail.title;
+                            if (title.length > 20) {
+                              title = title.substring(0, 20) + '...';
+                            }
+                            
+                            ctx.fillText(title, canvas.width / 2, canvas.height - 40);
+                            
+                            // Update the poster with the canvas data URL
+                            const dataURL = canvas.toDataURL('image/png');
+                            const video = e.currentTarget as HTMLVideoElement;
+                            video.poster = dataURL;
+                          }
+                        }}
                       />
                     )}
                   </div>
@@ -402,11 +465,74 @@ export default function VideoDetailPage() {
                             setVideosReady(true);
                           }
                         }}
-                        poster="/images/thumbnails/default.jpg"
+                        poster={videoDetail.thumbnail}
                         controls={true}
                         controlsList="nodownload"
                         preload="auto"
                         crossOrigin="anonymous"
+                        onPosterError={(e) => {
+                          // Create a dynamic poster using code
+                          const canvas = document.createElement('canvas');
+                          const ctx = canvas.getContext('2d');
+                          
+                          if (ctx) {
+                            // Set canvas dimensions
+                            canvas.width = 640;
+                            canvas.height = 360;
+                            
+                            // Create random but consistent color based on title
+                            const getColor = (text: string) => {
+                              const colors = [
+                                '#3498db', '#2ecc71', '#e74c3c', '#f39c12', 
+                                '#9b59b6', '#1abc9c', '#d35400', '#c0392b'
+                              ];
+                              
+                              // Simple hash for consistent color
+                              let hash = 0;
+                              for (let i = 0; i < text.length; i++) {
+                                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+                              }
+                              
+                              return colors[Math.abs(hash) % colors.length];
+                            };
+                            
+                            const bgColor = getColor('Processed: ' + videoDetail.title);
+                            
+                            // Fill background
+                            ctx.fillStyle = bgColor + '33'; // Adding transparency
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Draw play icon
+                            ctx.strokeStyle = bgColor;
+                            ctx.lineWidth = 5;
+                            ctx.beginPath();
+                            ctx.moveTo(canvas.width / 2 - 30, canvas.height / 2 - 40);
+                            ctx.lineTo(canvas.width / 2 - 30, canvas.height / 2 + 40);
+                            ctx.lineTo(canvas.width / 2 + 40, canvas.height / 2);
+                            ctx.closePath();
+                            ctx.stroke();
+                            ctx.fillStyle = bgColor;
+                            ctx.fill();
+                            
+                            // Draw title
+                            ctx.font = 'bold 24px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillStyle = bgColor;
+                            
+                            // Add processed prefix
+                            let title = 'Processed: ' + videoDetail.title;
+                            if (title.length > 28) {
+                              title = title.substring(0, 28) + '...';
+                            }
+                            
+                            ctx.fillText(title, canvas.width / 2, canvas.height - 40);
+                            
+                            // Update the poster with the canvas data URL
+                            const dataURL = canvas.toDataURL('image/png');
+                            const video = e.currentTarget as HTMLVideoElement;
+                            video.poster = dataURL;
+                          }
+                        }}
                       />
                     )}
                   </div>

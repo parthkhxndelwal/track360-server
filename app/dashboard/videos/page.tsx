@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ProcessedVideo {
   id: string;
+  _id?: string;
   title: string;
   location: {
     latitude: number;
@@ -240,22 +241,58 @@ export default function ProcessedVideosPage() {
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">
                   {/* Video Thumbnail */}
-                  <div className="w-full md:w-64 h-40 bg-gray-200 dark:bg-gray-800 relative flex items-center justify-center">
+                  <div className="w-full md:w-64 h-40 bg-gray-200 dark:bg-gray-800 relative flex items-center justify-center overflow-hidden">
                     {video.thumbnail ? (
                       <img 
                         src={video.thumbnail} 
                         alt={video.title} 
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.currentTarget.src = '/images/thumbnails/default.jpg';
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const getColor = (text: string) => {
+                              const colors = [
+                                '#3498db', '#2ecc71', '#e74c3c', '#f39c12', 
+                                '#9b59b6', '#1abc9c', '#d35400', '#c0392b'
+                              ];
+                              
+                              let hash = 0;
+                              for (let i = 0; i < text.length; i++) {
+                                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+                              }
+                              
+                              return colors[Math.abs(hash) % colors.length];
+                            };
+
+                            const color = getColor(video.title || 'Video');
+                            parent.innerHTML = `
+                              <div class="w-full h-full flex flex-col items-center justify-center" style="background-color: ${color}33">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video">
+                                  <path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
+                                </svg>
+                                <div class="mt-2 text-sm font-medium text-center px-2" style="color: ${color}">
+                                  ${(video.title || 'Video').length > 20 ? (video.title || 'Video').substring(0, 20) + '...' : (video.title || 'Video')}
+                                </div>
+                              </div>
+                              <div class="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white px-2 py-1 text-xs rounded-tl-md z-10">
+                                ${Math.floor((video.duration_seconds || 0) / 60)}:${Math.floor((video.duration_seconds || 0) % 60).toString().padStart(2, '0')}
+                              </div>
+                            `;
+                          }
                         }}
                       />
                     ) : (
-                      <Video className="h-12 w-12 text-gray-400" />
+                      <div className="w-full h-full flex flex-col items-center justify-center">
+                        <Video className="h-12 w-12 text-gray-400" />
+                        <div className="mt-2 text-sm text-gray-400 text-center px-2">
+                          {video.title || 'Video'}
+                        </div>
+                        <div className="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white px-2 py-1 text-xs rounded-tl-md z-10">
+                          {Math.floor((video.duration_seconds || 0) / 60)}:{Math.floor((video.duration_seconds || 0) % 60).toString().padStart(2, '0')}
+                        </div>
+                      </div>
                     )}
-                    <div className="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white px-2 py-1 text-xs rounded-tl-md">
-                      {Math.floor((video.duration_seconds || 0) / 60)}:{Math.floor((video.duration_seconds || 0) % 60).toString().padStart(2, '0')}
-                    </div>
                   </div>
                   
                   {/* Video Details */}

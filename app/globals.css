@@ -5,6 +5,7 @@
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-rgb: 0, 0, 0;
+  --card-gradient: linear-gradient(145deg, rgba(17, 24, 39, 1), rgba(24, 31, 46, 0.9));
 }
 
 body {
@@ -31,4 +32,97 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+}
+
+/* Custom Card styling for dashboard */
+.bg-card {
+  @apply bg-gray-950;
+}
+
+.bg-gray-900 {
+  background: var(--card-gradient);
+}
+
+/* Enhanced shadows for cards */
+.shadow-md {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom button styles to match shadcn UI */
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+/* Better contrast for charts */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  @apply stroke-gray-700;
+  stroke-opacity: 0.3;
+}
+
+.recharts-text {
+  @apply fill-gray-400 text-xs;
+}
+
+.recharts-legend-item-text {
+  @apply fill-gray-300 text-sm;
+}
+
+/* Enhanced pie chart */
+.recharts-pie path {
+  stroke: rgba(17, 24, 39, 0.8);
+  stroke-width: 1px;
+}
+
+.recharts-pie-label-text {
+  font-weight: 600;
+  fill: white;
+}
+
+/* Rounded tabs for better appearance */
+[role="tablist"] {
+  @apply rounded-lg bg-gray-800/50;
+}
+
+[role="tab"] {
+  @apply font-medium text-sm;
+}
+
+[role="tab"][data-state="active"] {
+  @apply bg-gray-700 text-white;
+}
+
+/* Progress bars */
+.bg-red-500, .bg-orange-500 {
+  @apply relative overflow-hidden;
+}
+
+.bg-red-500::after, .bg-orange-500::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Card hover effects */
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }

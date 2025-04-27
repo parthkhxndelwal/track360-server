@@ -23,7 +23,7 @@ export async function GET(
     console.log("Available collections:", collections.map(c => c.name));
     
     // Try different collection names for videos
-    const possibleCollections = ["processed_videos", "processed", "videos", "processedVideos"];
+    const possibleCollections = ["processed", "processed", "videos", "processedVideos"];
     
     let video = null;
     let collectionUsed = "";

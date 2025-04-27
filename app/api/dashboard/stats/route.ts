@@ -7,10 +7,10 @@ export async function GET() {
     const { db } = await connectToDatabase();
     
     // Get count of all videos
-    const totalVideos = await db.collection("unprocessed_videos").countDocuments({});
+    const totalVideos = await db.collection("unprocessed").countDocuments({});
     
     // Get count of processed videos
-    const processedVideos = await db.collection("processed_videos").countDocuments({});
+    const processedVideos = await db.collection("processed").countDocuments({});
     
     // Calculate unprocessed videos
     const unprocessedVideos = totalVideos - processedVideos;
@@ -60,7 +60,7 @@ export async function GET() {
     });
     
     // Get recent activity
-    const recentActivity = await db.collection("processed_videos")
+    const recentActivity = await db.collection("processed")
       .find({})
       .sort({ created_at: -1 })
       .limit(3)
@@ -86,8 +86,8 @@ export async function GET() {
     
     const dashboardStats = {
       total_videos: totalVideos,
-      processed_videos: processedVideos,
-      unprocessed_videos: unprocessedVideos,
+      processed: processedVideos,
+      unprocessed: unprocessedVideos,
       active_riders: activeRiders,
       rewards_distributed: rewardsDistributed,
       detection_summary: detectionSummary,

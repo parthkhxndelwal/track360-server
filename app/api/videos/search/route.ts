@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     
     // Fetch videos matching search criteria
     const videos = await db
-      .collection("processed_videos")
+      .collection("processed")
       .find(searchCriteria)
       .sort({ created_at: -1 })
       .limit(limit)

@@ -86,7 +86,7 @@ export async function GET() {
     let collectionUsed = "";
     
     // Try various collections that might contain processed videos
-    const possibleCollections = ["processed_videos", "processed", "videos", "processedVideos"];
+    const possibleCollections = ["processed", "processed", "videos", "processedVideos"];
     
     for (const collName of possibleCollections) {
       try {

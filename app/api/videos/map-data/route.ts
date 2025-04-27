@@ -8,7 +8,7 @@ export async function GET() {
     
     // Fetch all videos with location data
     const videos = await db
-      .collection("processed_videos")
+      .collection("processed")
       .find(
         { 
           "location.latitude": { $exists: true }, 

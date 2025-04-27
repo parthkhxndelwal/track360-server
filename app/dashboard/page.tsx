@@ -24,8 +24,8 @@ import {
 
 interface DashboardStats {
   total_videos: number;
-  processed_videos: number;
-  unprocessed_videos: number;
+  processed: number;
+  unprocessed: number;
   active_riders: number;
   rewards_distributed: number;
   detection_summary: {
@@ -77,8 +77,8 @@ export default function DashboardPage() {
           ...data.data,
           // Ensure we have all the expected fields with defaults if not provided
           total_videos: data.data.total_videos || 0,
-          processed_videos: data.data.processed_videos || 0,
-          unprocessed_videos: data.data.unprocessed_videos || 0,
+          processed: data.data.processed || 0,
+          unprocessed: data.data.unprocessed || 0,
           active_riders: data.data.active_riders || 0,
           rewards_distributed: data.data.rewards_distributed || 0,
           detection_summary: data.data.detection_summary || {
@@ -136,8 +136,8 @@ export default function DashboardPage() {
               ...data.data,
               // Ensure we have all the expected fields with defaults if not provided
               total_videos: data.data.total_videos || 0,
-              processed_videos: data.data.processed_videos || 0,
-              unprocessed_videos: data.data.unprocessed_videos || 0,
+              processed: data.data.processed || 0,
+              unprocessed: data.data.unprocessed || 0,
               active_riders: data.data.active_riders || 0,
               rewards_distributed: data.data.rewards_distributed || 0,
               detection_summary: data.data.detection_summary || {
@@ -276,7 +276,7 @@ export default function DashboardPage() {
             <FileCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.processed_videos}</div>
+            <div className="text-2xl font-bold">{stats.processed}</div>
             <p className="text-xs text-muted-foreground mt-1">
               <span className="text-green-500 flex items-center">
                 <ArrowUp className="h-3 w-3 mr-1" /> 8% increase
